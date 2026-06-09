@@ -6,6 +6,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/yfaheid/go-job-queue/producer"
+	"github.com/yfaheid/go-job-queue/worker"
 )
 
 func main() {
@@ -19,4 +20,5 @@ func main() {
 	}
 
 	fmt.Println("Job enqueued!")
+	worker.Start(rdb)
 }
