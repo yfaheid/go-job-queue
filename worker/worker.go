@@ -33,19 +33,35 @@ func Start(rdb *redis.Client) {
 		}
 
 		j.Attempts++
+		saveStatus(rdb, j, "running")
+
 		if err := process(j); err != nil {
 			log.Printf("Job %s failed (attempt %d/%d): %v", j.ID, j.Attempts, j.MaxAttempts, err)
 			if j.Attempts < j.MaxAttempts {
-				log.Printf("Requeueing job %s", j.ID)
+				saveStatus(rdb, j, "pending")
 				requeue(rdb, j)
 			} else {
-				log.Printf("Job %s exhausted all retries, dropping", j.ID)
+				saveStatus(rdb, j, "failed")
+				log.Printf("Job %s exhausted all retries", j.ID)
 			}
 			continue
 		}
 
+		saveStatus(rdb, j, "completed")
 		fmt.Printf("Job %s completed\n", j.ID)
 	}
+}
+
+func saveStatus(rdb *redis.Client, j job.Job, status string) {
+	ctx := context.Background()
+	key := "job:" + j.ID
+	rdb.HSet(ctx, key, map[string]interface{}{
+		"id":           j.ID,
+		"type":         j.Type,
+		"status":       status,
+		"attempts":     j.Attempts,
+		"max_attempts": j.MaxAttempts,
+	})
 }
 
 func requeue(rdb *redis.Client, j job.Job) {

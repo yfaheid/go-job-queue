@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -19,6 +20,7 @@ func NewServer(rdb *redis.Client) *Server {
 func (s *Server) RegisterRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", s.handleEnqueue)
+	mux.HandleFunc("GET /jobs/{id}", s.handleGetJob)
 	return mux
 }
 
@@ -41,4 +43,18 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"status": "enqueued"})
+}
+
+func (s *Server) handleGetJob(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx := context.Background()
+
+	data, err := s.rdb.HGetAll(ctx, "job:"+id).Result()
+	if err != nil || len(data) == 0 {
+		http.Error(w, "job not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
 }
