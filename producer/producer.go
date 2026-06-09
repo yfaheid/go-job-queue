@@ -26,5 +26,9 @@ func Enqueue(rdb *redis.Client, jobType string, payload string) error {
 	}
 
 	ctx := context.Background()
-	return rdb.LPush(ctx, "jobs", data).Err()
+	pipe := rdb.Pipeline()
+	pipe.LPush(ctx, "jobs", data)
+	pipe.LPush(ctx, "job_ids", j.ID)
+	_, err = pipe.Exec(ctx)
+	return err
 }

@@ -21,6 +21,7 @@ func (s *Server) RegisterRoutes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /jobs", s.handleEnqueue)
 	mux.HandleFunc("GET /jobs/{id}", s.handleGetJob)
+	mux.HandleFunc("GET /jobs", s.handleListJobs)
 	return mux
 }
 
@@ -57,4 +58,27 @@ func (s *Server) handleGetJob(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
+}
+
+func (s *Server) handleListJobs(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	// get the 20 most recent job IDs
+	ids, err := s.rdb.LRange(ctx, "job_ids", 0, 19).Result()
+	if err != nil {
+		http.Error(w, "failed to fetch job ids", http.StatusInternalServerError)
+		return
+	}
+
+	jobs := []map[string]string{}
+	for _, id := range ids {
+		data, err := s.rdb.HGetAll(ctx, "job:"+id).Result()
+		if err != nil || len(data) == 0 {
+			continue
+		}
+		jobs = append(jobs, data)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(jobs)
 }
