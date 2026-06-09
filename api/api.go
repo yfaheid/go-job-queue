@@ -37,6 +37,16 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Type == "" {
+		http.Error(w, "type is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Payload == "" {
+		http.Error(w, "payload is required", http.StatusBadRequest)
+		return
+	}
+
 	if err := producer.Enqueue(s.rdb, req.Type, req.Payload); err != nil {
 		http.Error(w, "failed to enqueue job", http.StatusInternalServerError)
 		return
