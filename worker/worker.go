@@ -38,5 +38,25 @@ func Start(rdb *redis.Client) {
 
 func process(j job.Job) {
 	fmt.Printf("Processing job %s of type %s\n", j.ID, j.Type)
+
+	switch j.Type {
+	case "email":
+		handleEmail(j)
+	case "resize_image":
+		handleResizeImage(j)
+	default:
+		log.Printf("Unknown job type: %s", j.Type)
+	}
+
 	fmt.Printf("Job %s completed\n", j.ID)
+}
+
+func handleEmail(j job.Job) {
+	// real email logic would go here
+	fmt.Printf("Sending email with payload: %s\n", j.Payload)
+}
+
+func handleResizeImage(j job.Job) {
+	// real image resizing logic would go here
+	fmt.Printf("Resizing image with payload: %s\n", j.Payload)
 }

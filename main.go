@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/yfaheid/go-job-queue/producer"
+	"github.com/yfaheid/go-job-queue/api"
 	"github.com/yfaheid/go-job-queue/worker"
 )
 
@@ -14,11 +15,11 @@ func main() {
 		Addr: "localhost:6379",
 	})
 
-	err := producer.Enqueue(rdb, "email", `{"to": "user@example.com"}`)
-	if err != nil {
-		log.Fatal(err)
-	}
+	go worker.Start(rdb)
 
-	fmt.Println("Job enqueued!")
-	worker.Start(rdb)
+	server := api.NewServer(rdb)
+	mux := server.RegisterRoutes()
+
+	fmt.Println("API listening on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
