@@ -32,31 +32,51 @@ func Start(rdb *redis.Client) {
 			continue
 		}
 
-		process(j)
+		j.Attempts++
+		if err := process(j); err != nil {
+			log.Printf("Job %s failed (attempt %d/%d): %v", j.ID, j.Attempts, j.MaxAttempts, err)
+			if j.Attempts < j.MaxAttempts {
+				log.Printf("Requeueing job %s", j.ID)
+				requeue(rdb, j)
+			} else {
+				log.Printf("Job %s exhausted all retries, dropping", j.ID)
+			}
+			continue
+		}
+
+		fmt.Printf("Job %s completed\n", j.ID)
 	}
 }
 
-func process(j job.Job) {
-	fmt.Printf("Processing job %s of type %s\n", j.ID, j.Type)
+func requeue(rdb *redis.Client, j job.Job) {
+	data, err := json.Marshal(j)
+	if err != nil {
+		log.Printf("Failed to marshal job for requeue: %v", err)
+		return
+	}
+	ctx := context.Background()
+	rdb.LPush(ctx, "jobs", data)
+}
+
+func process(j job.Job) error {
+	fmt.Printf("Processing job %s of type %s (attempt %d/%d)\n", j.ID, j.Type, j.Attempts, j.MaxAttempts)
 
 	switch j.Type {
 	case "email":
-		handleEmail(j)
+		return handleEmail(j)
 	case "resize_image":
-		handleResizeImage(j)
+		return handleResizeImage(j)
 	default:
-		log.Printf("Unknown job type: %s", j.Type)
+		return fmt.Errorf("unknown job type: %s", j.Type)
 	}
-
-	fmt.Printf("Job %s completed\n", j.ID)
 }
 
-func handleEmail(j job.Job) {
-	// real email logic would go here
+func handleEmail(j job.Job) error {
 	fmt.Printf("Sending email with payload: %s\n", j.Payload)
+	return nil
 }
 
-func handleResizeImage(j job.Job) {
-	// real image resizing logic would go here
+func handleResizeImage(j job.Job) error {
 	fmt.Printf("Resizing image with payload: %s\n", j.Payload)
+	return nil
 }

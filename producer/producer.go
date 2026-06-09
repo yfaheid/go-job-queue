@@ -12,10 +12,12 @@ import (
 
 func Enqueue(rdb *redis.Client, jobType string, payload string) error {
 	j := job.Job{
-		ID:      uuid.NewString(),
-		Type:    jobType,
-		Payload: payload,
-		Status:  "pending",
+		ID:          uuid.NewString(),
+		Type:        jobType,
+		Payload:     payload,
+		Status:      "pending",
+		Attempts:    0,
+		MaxAttempts: 3,
 	}
 
 	data, err := json.Marshal(j)
